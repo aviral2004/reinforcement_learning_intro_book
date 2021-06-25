@@ -16,11 +16,11 @@ class Bandit:
         # @qt     : Estimated reward value of action till a particular time step 
         # format [qt(a), no of times selected]
         # @Reward : list to store the reward
-        gauss_sample = np.random.normal(loc=1, size = BANDIT_SIZE)
+        gauss_sample = np.random.normal(size = BANDIT_SIZE)
         
         self.q = {a: gauss_sample[a - 1] for a in range(1, BANDIT_SIZE + 1)}
         self.epsilon = epsilon
-        self.qt = {a: (float('-inf'), 0) for a in range(1, BANDIT_SIZE + 1)}
+        self.qt = {a: (0, 0) for a in range(1, BANDIT_SIZE + 1)}
         self.reward = []
 
     def step(self):
@@ -37,7 +37,7 @@ class Bandit:
             self.updateAverage(max_reward_action, reward_obtained)      
 
     def getRewardValue(self, a):
-        return self.q[a] + np.random.normal(scale=0.1)
+        return self.q[a] + np.random.normal()
 
     def updateAverage(self, index, reward):
         avg, n = self.qt[index]
