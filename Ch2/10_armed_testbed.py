@@ -7,7 +7,7 @@ from statistics import mean
 
 BANDIT_SIZE = 10
 TIME_STEPS  = 1000
-SAMPLE      = 100
+SAMPLE      = 2000
 
 class Bandit:
     def __init__(self, epsilon = 0):
@@ -73,19 +73,18 @@ if __name__ == "__main__":
 
     #ITERATE THROUGH BANDITS of list_e_0_1 etc... 
     #AND ACCESS THEIR SELF.REWARDS AND TAKE MEAN TO GET VALUES FOR GRAPH
-
-    # for task in tasks_e_0:
-    #     print(task.reward)
-
     
-    plot_reward_list = [mean([task.reward[i] for task in tasks_e_0]) for i in range(TIME_STEPS)]
-    plt.plot(plot_reward_list)
+    plot_reward_list_e_0 = [mean([task.reward[i] for task in tasks_e_0]) for i in range(TIME_STEPS)]
+    plot_reward_list_e_0_01 = [mean([task.reward[i] for task in tasks_e_0_01]) for i in range(TIME_STEPS)]
+    plot_reward_list_e_0_1 = [mean([task.reward[i] for task in tasks_e_0_1]) for i in range(TIME_STEPS)]
 
-    plot_reward_list = [mean([task.reward[i] for task in tasks_e_0_01]) for i in range(TIME_STEPS)]
-    plt.plot(plot_reward_list)
+    plt.plot(plot_reward_list_e_0, label='epsilon = 0')
+    plt.plot(plot_reward_list_e_0_01, label='epsilon = 0.01')
+    plt.plot(plot_reward_list_e_0_1, label='epsilon = 0.1')
 
-    plot_reward_list = [mean([task.reward[i] for task in tasks_e_0_1]) for i in range(TIME_STEPS)]
-    plt.plot(plot_reward_list)
+    plt.xlabel('Steps')
+    plt.ylabel('Average Reward')
+    plt.legend()
     plt.show()
 
     # Testing
