@@ -80,25 +80,28 @@ def optimal_action_graph(tasks_1, tasks_2, tasks_3):
     plot_best_action_1 = []
     plot_best_action_2 = []
     plot_best_action_3 = []
-    n_best_action_taken_1 = 0
-    n_best_action_taken_2 = 0
-    n_best_action_taken_3 = 0
 
-    for i in range(1, TIME_STEPS + 1):
+    for i in range(TIME_STEPS):
+        n1 = 0
         for task in tasks_1:
-            if task.best_action_taken[i - 1]:
-                n_best_action_taken_1 += 1
-        plot_best_action_1.append((n_best_action_taken_1/(i*SAMPLE))*100)
+            if task.best_action_taken[i]:
+                n1 += 1
 
+        plot_best_action_1.append((n1/SAMPLE)*100)
+
+        n2 = 0
         for task in tasks_2:
-            if task.best_action_taken[i - 1]:
-                n_best_action_taken_2 += 1
-        plot_best_action_2.append((n_best_action_taken_2/(i*SAMPLE))*100)
+            if task.best_action_taken[i]:
+                n2 += 1
 
+        plot_best_action_2.append((n2/SAMPLE)*100)
+
+        n3 = 0
         for task in tasks_3:
-            if task.best_action_taken[i - 1]:
-                n_best_action_taken_3 += 1
-        plot_best_action_3.append((n_best_action_taken_3/(i*SAMPLE))*100)
+            if task.best_action_taken[i]:
+                n3 += 1
+
+        plot_best_action_3.append((n3/SAMPLE)*100)
     
     plt.subplot(1, 2, 2)
     plt.plot(plot_best_action_1, label=f'epsilon = {tasks_1[0].epsilon}')
