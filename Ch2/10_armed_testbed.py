@@ -6,7 +6,7 @@ from statistics import mean
 
 BANDIT_SIZE = 10
 TIME_STEPS  = 1000
-SAMPLE      = 2000
+SAMPLE      = 20000
 
 class Bandit:
     def __init__(self, epsilon = 0, initial = 0):
@@ -48,7 +48,7 @@ class Bandit:
 
     def updateEstimate(self, index, reward):
         qk, n = self.qt[index]
-        step_size = 0.1
+        step_size = 1/n
 
         if n == 0:
             qk = reward
