@@ -9,7 +9,7 @@ TIME_STEPS  = 1000
 SAMPLE      = 2000
 
 class Bandit:
-    def __init__(self, epsilon = 0):
+    def __init__(self, epsilon = 0, initial = 0):
         # @q      : Real reward value of actions
         # @epsilon: probability for exploration
         # @qt     : Estimated reward value of action till a particular time step 
@@ -19,7 +19,8 @@ class Bandit:
         
         self.q = {a: gauss_sample[a - 1] for a in range(1, BANDIT_SIZE + 1)}
         self.epsilon = epsilon
-        self.qt = {a: (0, 0) for a in range(1, BANDIT_SIZE + 1)}
+        self.initial = initial
+        self.qt = {a: (initial, 0) for a in range(1, BANDIT_SIZE + 1)}
         self.reward = []
         self.best_action_taken = []
         self.best_action = max(self.q, key=self.q.get)
@@ -113,27 +114,47 @@ def optimal_action_graph(tasks_1, tasks_2, tasks_3):
     plt.ylabel('% Optimal action')
     plt.legend()
 
+def optimal_action_general(graphs):
+    for lst in graphs:
+        plot_best_action = []
+        for i in range(TIME_STEPS):
+            n = 0
+            for task in lst:
+                if task.best_action_taken[i]:
+                    n += 1
+            plot_best_action.append((n/SAMPLE)*100)
+        
+        plt.plot(plot_best_action, label=f'epsilon = {lst[0].epsilon}, initial = {lst[0].initial}')
+
+    plt.title('Percentage of actions where best actions is chosen through learning time steps')
+    plt.xlabel('Steps')
+    plt.ylabel('% Optimal action')
+    plt.legend()
+
+def sim(epsilon = 0, initial = 0):
+    tasks = [Bandit(epsilon=epsilon, initial=initial) for i in range(SAMPLE)]
+    for task in tasks:
+        for t in range(TIME_STEPS):
+            task.step()
+
+    return tasks
+
 if __name__ == "__main__":
 
-    tasks_e_0 = [Bandit() for i in range(SAMPLE)]
-    for bandit_task in tasks_e_0:
-        for t in range(TIME_STEPS):
-            bandit_task.step()
-
-    tasks_e_0_01 = [Bandit(epsilon=0.01) for i in range(SAMPLE)]
-    for bandit_task in tasks_e_0_01:
-        for t in range(TIME_STEPS):
-            bandit_task.step()
-
-    tasks_e_0_1 = [Bandit(epsilon=0.1) for i in range(SAMPLE)]
-    for bandit_task in tasks_e_0_1:
-        for t in range(TIME_STEPS):
-            bandit_task.step()
+    tasks_e_0_0 = sim()
+    tasks_e_0__inf = sim(initial=float("inf"))
+    tasks_e_0_inf = sim(initial=float("-inf"))
+    tasks_e_0_01_0 = sim(epsilon = 0.01, initial=0)
+    tasks_e_0_01__inf = sim(epsilon = 0.01, initial=float("inf"))
+    tasks_e_0_01_inf = sim(epsilon = 0.01, initial=float("-inf"))
+    tasks_e_0_1_0 = sim(epsilon = 0.1, initial=0)
+    tasks_e_0_1__inf = sim(epsilon = 0.1, initial=float("inf"))
+    tasks_e_0_1_inf = sim(epsilon = 0.1, initial=float("-inf"))
 
     # Show graphs
-    plt.figure(figsize=(17, 7))
-    avg_reward_graph(tasks_e_0, tasks_e_0_01, tasks_e_0_1)
-    optimal_action_graph(tasks_e_0, tasks_e_0_01, tasks_e_0_1)
+    # plt.figure(figsize=(17, 7))
+    # avg_reward_graph(tasks_e_0, tasks_e_0_01, tasks_e_0_1)
+    optimal_action_general((tasks_e_0_0, tasks_e_0__inf, tasks_e_0_inf, tasks_e_0_01_0, tasks_e_0_01__inf, tasks_e_0_01_inf, tasks_e_0_1_0, tasks_e_0_1__inf, tasks_e_0_1_inf))
     plt.show()
 
     # Testing
