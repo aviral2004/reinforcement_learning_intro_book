@@ -48,12 +48,12 @@ class Bandit:
 
     def updateEstimate(self, index, reward):
         qk, n = self.qt[index]
-        step_size = 1/n
 
         if n == 0:
             qk = reward
             n += 1
         else:
+            step_size = 1/n
             qk += (reward - qk)*step_size
             n += 1
 
