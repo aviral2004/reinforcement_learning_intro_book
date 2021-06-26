@@ -4,7 +4,6 @@ import matplotlib as mpt
 from matplotlib import pyplot as plt
 from statistics import mean
 
-
 BANDIT_SIZE = 10
 TIME_STEPS  = 1000
 SAMPLE      = 2000
@@ -22,19 +21,26 @@ class Bandit:
         self.epsilon = epsilon
         self.qt = {a: (0, 0) for a in range(1, BANDIT_SIZE + 1)}
         self.reward = []
+        self.best_action_taken = []
+        self.best_action = max(self.q, key=self.q.get)
 
     def step(self):
-        if random.random() < self.epsilon: #Exploring other actions
-            curr_action = random.randint(1, BANDIT_SIZE)
-            reward_obtained = self.getRewardValue(curr_action)
-            self.reward.append(reward_obtained)
-            self.updateAverage(curr_action, reward_obtained)
+        if random.random() < self.epsilon:
+            #Exploring other actions
+            action = random.randint(1, BANDIT_SIZE)
         else:
             #Greedy approach
-            max_reward_action = max(self.qt, key=self.qt.get)
-            reward_obtained = self.getRewardValue(max_reward_action)
-            self.reward.append(reward_obtained)
-            self.updateAverage(max_reward_action, reward_obtained)      
+            action = max(self.qt, key=self.qt.get)
+
+        reward_obtained = self.getRewardValue(action)
+
+        self.reward.append(reward_obtained)
+        if action != self.best_action:
+            self.best_action_taken.append(False)
+        else:
+            self.best_action_taken.append(True)
+
+        self.updateAverage(action, reward_obtained)
 
     def getRewardValue(self, a):
         return self.q[a] + np.random.normal()
@@ -54,6 +60,56 @@ class Bandit:
     def getState(self):
         return (self.q, self.qt)
 
+
+def avg_reward_graph(tasks_1, tasks_2, tasks_3):
+    plot_reward_list_1 = [mean([task.reward[i] for task in tasks_1]) for i in range(TIME_STEPS)]
+    plot_reward_list_2 = [mean([task.reward[i] for task in tasks_2]) for i in range(TIME_STEPS)]
+    plot_reward_list_3 = [mean([task.reward[i] for task in tasks_3]) for i in range(TIME_STEPS)]
+
+    plt.subplot(1, 2, 1)
+    plt.plot(plot_reward_list_1, label=f'epsilon = {tasks_1[0].epsilon}')
+    plt.plot(plot_reward_list_2, label=f'epsilon = {tasks_2[0].epsilon}')
+    plt.plot(plot_reward_list_3, label=f'epsilon = {tasks_3[0].epsilon}')
+
+    plt.title('Average Reward through learning time steps')
+    plt.xlabel('Steps')
+    plt.ylabel('Average Reward')
+    plt.legend()
+
+def optimal_action_graph(tasks_1, tasks_2, tasks_3):
+    plot_best_action_1 = []
+    plot_best_action_2 = []
+    plot_best_action_3 = []
+    n_best_action_taken_1 = 0
+    n_best_action_taken_2 = 0
+    n_best_action_taken_3 = 0
+
+    for i in range(1, TIME_STEPS + 1):
+        for task in tasks_1:
+            if task.best_action_taken[i - 1]:
+                n_best_action_taken_1 += 1
+        plot_best_action_1.append((n_best_action_taken_1/(i*SAMPLE))*100)
+
+        for task in tasks_2:
+            if task.best_action_taken[i - 1]:
+                n_best_action_taken_2 += 1
+        plot_best_action_2.append((n_best_action_taken_2/(i*SAMPLE))*100)
+
+        for task in tasks_3:
+            if task.best_action_taken[i - 1]:
+                n_best_action_taken_3 += 1
+        plot_best_action_3.append((n_best_action_taken_3/(i*SAMPLE))*100)
+    
+    plt.subplot(1, 2, 2)
+    plt.plot(plot_best_action_1, label=f'epsilon = {tasks_1[0].epsilon}')
+    plt.plot(plot_best_action_2, label=f'epsilon = {tasks_2[0].epsilon}')
+    plt.plot(plot_best_action_3, label=f'epsilon = {tasks_3[0].epsilon}')
+
+    plt.title('Percentage of actions where best actions is chosen through learning time steps')
+    plt.xlabel('Steps')
+    plt.ylabel('% Optimal action')
+    plt.legend()
+
 if __name__ == "__main__":
 
     tasks_e_0 = [Bandit() for i in range(SAMPLE)]
@@ -71,20 +127,10 @@ if __name__ == "__main__":
         for t in range(TIME_STEPS):
             bandit_task.step()
 
-    #ITERATE THROUGH BANDITS of list_e_0_1 etc... 
-    #AND ACCESS THEIR SELF.REWARDS AND TAKE MEAN TO GET VALUES FOR GRAPH
-    
-    plot_reward_list_e_0 = [mean([task.reward[i] for task in tasks_e_0]) for i in range(TIME_STEPS)]
-    plot_reward_list_e_0_01 = [mean([task.reward[i] for task in tasks_e_0_01]) for i in range(TIME_STEPS)]
-    plot_reward_list_e_0_1 = [mean([task.reward[i] for task in tasks_e_0_1]) for i in range(TIME_STEPS)]
-
-    plt.plot(plot_reward_list_e_0, label='epsilon = 0')
-    plt.plot(plot_reward_list_e_0_01, label='epsilon = 0.01')
-    plt.plot(plot_reward_list_e_0_1, label='epsilon = 0.1')
-
-    plt.xlabel('Steps')
-    plt.ylabel('Average Reward')
-    plt.legend()
+    # Show graphs
+    plt.figure(figsize=(17, 7))
+    avg_reward_graph(tasks_e_0, tasks_e_0_01, tasks_e_0_1)
+    optimal_action_graph(tasks_e_0, tasks_e_0_01, tasks_e_0_1)
     plt.show()
 
     # Testing
