@@ -12,7 +12,7 @@ TIME_STEPS  = 1000
 SAMPLE      = 100
 
 class Bandit:
-    def __init__(self, epsilon = 0, initial = 0, step_size = 0.1, baseline = False, mean = 0):
+    def __init__(self, epsilon = 0, initial = 0, step_size = 0.1, baseline = False, mean = 0, gradient = False):
         # @q      : Real reward value of actions
         # @epsilon: probability for exploration
         # @qt     : Estimated reward value of action till a particular time step 
@@ -27,6 +27,7 @@ class Bandit:
         self.initial = initial
         self.step_size = step_size
         self.gradient_baseline = baseline
+        self.gradient = gradient
 
         self.avg_reward = 0
         self.time_step = 0
@@ -53,8 +54,10 @@ class Bandit:
         return random.choices(np.arange(BANDIT_SIZE), weights=self._calc_prob(self.preferences), k = 1)[0] + 1
 
     def step(self):
-        # action = self.e_greedy()
-        action = self.gradientPref()
+        if self.gradient:
+            action = self.gradientPref()
+        else:
+            action = self.e_greedy()
         reward_obtained = self.getRewardValue(action)
 
         # For documenting purposes
@@ -109,8 +112,10 @@ class Bandit:
         self.qt[index] = (qk, n)
 
     def updateEstimate(self, index, reward):
-        # self.sampleAverages(index, reward)
-        self.gradientUpdate(index, reward)
+        if self.gradient:
+            self.gradientUpdate(index, reward)
+        else:
+            self.sampleAverages(index, reward)
 
     def getState(self):
         return (self.q, self.qt)
@@ -149,8 +154,8 @@ def optimal_action_graph(tasks_1, tasks_2, tasks_3):
 
     plt.title('Percentage of actions where best actions is chosen through learning time steps')
 
-def sim(eps = 0, init = 0, step_size = 0.1, baseline = False, mean = 0):
-    tasks = [Bandit(epsilon=eps, initial=init, step_size=step_size, baseline=baseline, mean=mean) for i in range(SAMPLE)]
+def sim(eps = 0, init = 0, step_size = 0.1, baseline = False, mean = 0, gradient = False):
+    tasks = [Bandit(epsilon=eps, initial=init, step_size=step_size, baseline=baseline, mean=mean, gradient=gradient) for i in range(SAMPLE)]
     for i in tqdm(range(len(tasks))):
         for t in range((TIME_STEPS)):
             tasks[i].step()
@@ -180,11 +185,11 @@ if __name__ == "__main__":
     # tasks_e_0_20 = sim(init=20)
     # task_e_0__inf = sim(init=float('inf'))
 
-    # cProfile.run("task_a_0_1_base = sim(step_size=0.1, baseline=True)")
-    task_a_0_1_base = sim(step_size=0.1, baseline=True, mean = 4)
-    task_a_0_1 = sim(step_size=0.1, mean = 4)
-    task_a_0_4_base = sim(step_size=0.4, baseline=True, mean = 4)
-    task_a_0_4 = sim(step_size=0.4, mean = 4)
+    # cProfile.run("task_a_0_1_base = sim(step_size=0.1, baseline=True, mean = 4, gradient = True)")
+    task_a_0_1_base = sim(step_size=0.1, baseline=True, mean = 4, gradient = True)
+    task_a_0_1 = sim(step_size=0.1, mean = 4, gradient = True)
+    task_a_0_4_base = sim(step_size=0.4, baseline=True, mean = 4, gradient = True)
+    task_a_0_4 = sim(step_size=0.4, mean = 4, gradient = True)
 
     # SHOW GRAPHS
     # plt.figure(figsize=(17, 7))
