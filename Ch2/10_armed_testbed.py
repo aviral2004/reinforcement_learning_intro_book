@@ -9,7 +9,7 @@ import cProfile
 
 BANDIT_SIZE = 10
 TIME_STEPS  = 1000
-SAMPLE      = 50
+SAMPLE      = 100
 
 class Bandit:
     def __init__(self, epsilon = 0, initial = 0, step_size = 0.1, baseline = False, mean = 0):
@@ -36,7 +36,7 @@ class Bandit:
         self.best_action_taken = []
         self.best_action = max(self.q, key=self.q.get)
 
-        # self.preferences = {a: 0 for a in range(1, BANDIT_SIZE + 1)}
+        # H_t
         self.preferences = np.zeros(BANDIT_SIZE)
 
     def e_greedy(self):
@@ -57,15 +57,15 @@ class Bandit:
         action = self.gradientPref()
         reward_obtained = self.getRewardValue(action)
 
+        # For documenting purposes
         self.reward.append(reward_obtained)
         if action != self.best_action:
             self.best_action_taken.append(False)
         else:
             self.best_action_taken.append(True)
 
-        # self.updateEstimate(action, reward_obtained)
-
-        self.gradientUpdate(action, reward_obtained)
+        # updates either qt or ht
+        self.updateEstimate(action, reward_obtained)
 
         self.time_step += 1
         self.updateAvgReward(reward_obtained)
@@ -90,6 +90,9 @@ class Bandit:
             baseline = 0
 
         pi_t = self._calc_prob(self.preferences)
+
+        # reward = R_t
+        # baseline = R'_t
         self.preferences += self.step_size*(one_zero - pi_t)*(reward - baseline)
     
     def sampleAverages(self, index, reward):
@@ -106,11 +109,11 @@ class Bandit:
         self.qt[index] = (qk, n)
 
     def updateEstimate(self, index, reward):
-        self.sampleAverages(index, reward)
+        # self.sampleAverages(index, reward)
+        self.gradientUpdate(index, reward)
 
     def getState(self):
         return (self.q, self.qt)
-        # return {i:self._calc_prob(i) for i in self.preferences}
 
 
 def avg_reward_general(graphs):
@@ -124,16 +127,9 @@ def avg_reward_general(graphs):
 
 def optimal_action_general(graphs):
     for lst in graphs:
-        plot_best_action = []
-        for i in range(TIME_STEPS):
-            n = 0
-            for task in lst:
-                if task.best_action_taken[i]:
-                    n += 1
-            plot_best_action.append((n/SAMPLE)*100)
-        
-        # plt.plot(plot_best_action, label=f'epsilon = {lst[0].epsilon}, initial = {lst[0].initial}, step_size = {lst[0].step_size}')
-        plt.plot(plot_best_action, label=f'step_size = {lst[0].step_size}, baseline = {lst[0].gradient_baseline}')
+        plot_best_action = np.average(np.array([task.best_action_taken for task in lst]), axis=0)*100
+        plt.plot(plot_best_action, label=f'epsilon = {lst[0].epsilon}, initial = {lst[0].initial}')
+        # plt.plot(plot_best_action, label=f'step_size = {lst[0].step_size}, baseline = {lst[0].gradient_baseline}')
 
     plt.xlabel('Steps')
     plt.ylabel('% Optimal action')
