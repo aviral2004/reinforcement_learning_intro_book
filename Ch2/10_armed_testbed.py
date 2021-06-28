@@ -1,22 +1,24 @@
 import numpy as np
 import random
-import matplotlib as mpt
 from matplotlib import pyplot as plt
 from statistics import mean
 from math import e
+from tqdm import tqdm
+
+import cProfile
 
 BANDIT_SIZE = 10
-TIME_STEPS  = 5
-SAMPLE      = 2
+TIME_STEPS  = 1000
+SAMPLE      = 50
 
 class Bandit:
-    def __init__(self, epsilon = 0, initial = 0, step_size = 0.1, baseline = False):
+    def __init__(self, epsilon = 0, initial = 0, step_size = 0.1, baseline = False, mean = 0):
         # @q      : Real reward value of actions
         # @epsilon: probability for exploration
         # @qt     : Estimated reward value of action till a particular time step 
         # format [qt(a), no of times selected]
         # @Reward : list to store the reward
-        gauss_sample = np.random.normal(size = BANDIT_SIZE)
+        gauss_sample = np.random.normal(loc=mean, size = BANDIT_SIZE)
         
         self.q = {a: gauss_sample[a - 1] for a in range(1, BANDIT_SIZE + 1)}
         self.qt = {a: (initial, 0) for a in range(1, BANDIT_SIZE + 1)}
@@ -34,7 +36,8 @@ class Bandit:
         self.best_action_taken = []
         self.best_action = max(self.q, key=self.q.get)
 
-        self.preferences = {a: 0 for a in range(1, BANDIT_SIZE + 1)}
+        # self.preferences = {a: 0 for a in range(1, BANDIT_SIZE + 1)}
+        self.preferences = np.zeros(BANDIT_SIZE)
 
     def e_greedy(self):
         if random.random() < self.epsilon:
@@ -47,10 +50,11 @@ class Bandit:
         return action
 
     def gradientPref(self):
-        return
+        return random.choices(np.arange(BANDIT_SIZE), weights=self._calc_prob(self.preferences), k = 1)[0] + 1
 
     def step(self):
-        action = self.e_greedy()
+        # action = self.e_greedy()
+        action = self.gradientPref()
         reward_obtained = self.getRewardValue(action)
 
         self.reward.append(reward_obtained)
@@ -59,7 +63,7 @@ class Bandit:
         else:
             self.best_action_taken.append(True)
 
-        self.updateEstimate(action, reward_obtained)
+        # self.updateEstimate(action, reward_obtained)
 
         self.gradientUpdate(action, reward_obtained)
 
@@ -72,19 +76,21 @@ class Bandit:
     def updateAvgReward(self, reward):
         self.avg_reward += (1/self.time_step)*(reward - self.avg_reward)
 
-    def _calc_prob(self, action_index):
-        prob_t = np.exp(self.preferences[action_index])/sum([np.exp(val) for val in self.preferences.values()])
+    def _calc_prob(self, action_val):
+        prob_t = np.exp(action_val)/(np.exp(self.preferences)).sum()
         return prob_t
 
     def gradientUpdate(self, index, reward):
-        for action in self.preferences:
-            var = 1 if action == index else 0
-            if self.gradient_baseline:
-                baseline = self.avg_reward
-            else:
-                baseline = 0
+        one_zero = np.zeros(BANDIT_SIZE)
+        one_zero[index - 1] = 1
 
-            self.preferences[action] += self.step_size*(var - self._calc_prob(action))*(reward - baseline)
+        if self.gradient_baseline:
+            baseline = self.avg_reward
+        else:
+            baseline = 0
+
+        pi_t = self._calc_prob(self.preferences)
+        self.preferences += self.step_size*(one_zero - pi_t)*(reward - baseline)
     
     def sampleAverages(self, index, reward):
         qk, n = self.qt[index]
@@ -126,8 +132,9 @@ def optimal_action_general(graphs):
                     n += 1
             plot_best_action.append((n/SAMPLE)*100)
         
-        plt.plot(plot_best_action, label=f'epsilon = {lst[0].epsilon}, initial = {lst[0].initial}')
-    
+        # plt.plot(plot_best_action, label=f'epsilon = {lst[0].epsilon}, initial = {lst[0].initial}, step_size = {lst[0].step_size}')
+        plt.plot(plot_best_action, label=f'step_size = {lst[0].step_size}, baseline = {lst[0].gradient_baseline}')
+
     plt.xlabel('Steps')
     plt.ylabel('% Optimal action')
     plt.legend()
@@ -146,21 +153,20 @@ def optimal_action_graph(tasks_1, tasks_2, tasks_3):
 
     plt.title('Percentage of actions where best actions is chosen through learning time steps')
 
-def sim(eps = 0, init = 0):
-    tasks = [Bandit(epsilon=eps, initial=init) for i in range(SAMPLE)]
-    for task in tasks:
-        for t in range(TIME_STEPS):
-            task.step()
-            print(task.getState())
+def sim(eps = 0, init = 0, step_size = 0.1, baseline = False, mean = 0):
+    tasks = [Bandit(epsilon=eps, initial=init, step_size=step_size, baseline=baseline, mean=mean) for i in range(SAMPLE)]
+    for i in tqdm(range(len(tasks))):
+        for t in range((TIME_STEPS)):
+            tasks[i].step()
 
     return tasks
 
 if __name__ == "__main__":
     # SIMULATE LEARNING
 
-    tasks_e_0 = sim()
-    tasks_e_0_01 = sim(eps = 0.01)
-    tasks_e_0_1 = sim(eps = 0.1)
+    # tasks_e_0 = sim()
+    # tasks_e_0_01 = sim(eps = 0.01)
+    # tasks_e_0_1 = sim(eps = 0.1)
 
     # tasks_e_0_0 = sim()
     # tasks_e_0__inf = sim(init=float("inf"))
@@ -178,12 +184,18 @@ if __name__ == "__main__":
     # tasks_e_0_20 = sim(init=20)
     # task_e_0__inf = sim(init=float('inf'))
 
+    # cProfile.run("task_a_0_1_base = sim(step_size=0.1, baseline=True)")
+    task_a_0_1_base = sim(step_size=0.1, baseline=True, mean = 4)
+    task_a_0_1 = sim(step_size=0.1, mean = 4)
+    task_a_0_4_base = sim(step_size=0.4, baseline=True, mean = 4)
+    task_a_0_4 = sim(step_size=0.4, mean = 4)
+
     # SHOW GRAPHS
     # plt.figure(figsize=(17, 7))
 
-    avg_reward_graph(tasks_e_0, tasks_e_0_1, tasks_e_0_01)
-    optimal_action_graph(tasks_e_0, tasks_e_0_01, tasks_e_0_1)
-    # optimal_action_general((tasks_e_0_1_0, task_e_0_5))
+    # avg_reward_graph(tasks_e_0, tasks_e_0_1, tasks_e_0_01)
+    # optimal_action_graph(tasks_e_0, tasks_e_0_01, tasks_e_0_1)
+    optimal_action_general((task_a_0_1_base, task_a_0_1, task_a_0_4_base, task_a_0_4))
     # optimal_action_general((task_e_0_5, tasks_e_0_1_0, task_e_0__inf, tasks_e_0_10, tasks_e_0_20))
 
     plt.show()
