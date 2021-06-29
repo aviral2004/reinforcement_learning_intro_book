@@ -3,16 +3,18 @@ import random
 from matplotlib import pyplot as plt
 from statistics import mean
 from math import e
+from numpy.core.defchararray import greater
+from numpy.lib.function_base import average
 from tqdm import tqdm
 
 import cProfile
 
 BANDIT_SIZE = 10
 TIME_STEPS  = 1000
-SAMPLE      = 100
+SAMPLE      = 2000
 
 class Bandit:
-    def __init__(self, epsilon = 0, initial = 0, step_size = 0.1, baseline = False, mean = 0, gradient = False):
+    def __init__(self, epsilon = 0, initial = 0, step_size = 0.1, baseline = False, mean = 0, gradient = False, sample_averages = False):
         # @q      : Real reward value of actions
         # @epsilon: probability for exploration
         # @qt     : Estimated reward value of action till a particular time step 
@@ -25,7 +27,13 @@ class Bandit:
 
         self.epsilon = epsilon
         self.initial = initial
-        self.step_size = step_size
+        if gradient:
+            self.step_size = step_size
+        elif sample_averages:
+            self.step_size = lambda x: 1/x
+        else:
+            self.step_size = lambda x: step_size
+        
         self.gradient_baseline = baseline
         self.gradient = gradient
 
@@ -105,8 +113,7 @@ class Bandit:
             qk = reward
             n += 1
         else:
-            step_size = 1/n
-            qk += ((reward - qk) * step_size)
+            qk += ((reward - qk) * self.step_size(n))
             n += 1
 
         self.qt[index] = (qk, n)
@@ -133,8 +140,10 @@ def avg_reward_general(graphs):
 def optimal_action_general(graphs):
     for lst in graphs:
         plot_best_action = np.average(np.array([task.best_action_taken for task in lst]), axis=0)*100
-        plt.plot(plot_best_action, label=f'epsilon = {lst[0].epsilon}, initial = {lst[0].initial}')
-        # plt.plot(plot_best_action, label=f'step_size = {lst[0].step_size}, baseline = {lst[0].gradient_baseline}')
+        if lst[0].gradient:
+            plt.plot(plot_best_action, label=f'step_size = {lst[0].step_size}, baseline = {lst[0].gradient_baseline}')
+        else:
+            plt.plot(plot_best_action, label=f'epsilon = {lst[0].epsilon}, initial = {lst[0].initial}')
 
     plt.xlabel('Steps')
     plt.ylabel('% Optimal action')
@@ -154,8 +163,33 @@ def optimal_action_graph(tasks_1, tasks_2, tasks_3):
 
     plt.title('Percentage of actions where best actions is chosen through learning time steps')
 
-def sim(eps = 0, init = 0, step_size = 0.1, baseline = False, mean = 0, gradient = False):
-    tasks = [Bandit(epsilon=eps, initial=init, step_size=step_size, baseline=baseline, mean=mean, gradient=gradient) for i in range(SAMPLE)]
+def performance_graph():
+    labels = ['epsilon-greedy', 'gradient bandit', 'optimistic initialisation']
+
+    generators = np.array([
+        lambda epsilon: np.average([np.average(task.reward) for task in sim(eps=epsilon, sample_averages=True)]),
+        lambda alpha: np.average([np.average(task.reward) for task in sim(gradient=True, step_size=alpha, baseline=True)]),
+        lambda initial: np.average([np.average(task.reward) for task in sim(eps=0, init=initial, step_size=0.1)])
+    ])
+
+    parameters = np.array([
+        np.arange(-7, -1, dtype=float),
+        np.arange(-5, 2, dtype=float),
+        np.arange(-2, 3, dtype=float)
+    ])
+    
+    # greedy, gradient, greedy_optimistic = [list(map(generators[i], np.power(2, parameters[i]))) for i in range(len(generators))]
+    plot_values = [list(map(generators[i], np.power(2, parameters[i]))) for i in range(len(generators))]
+    for i, (plot_value, parameter) in enumerate(zip(plot_values, parameters)):
+        plt.plot(parameter, plot_value, label=labels[i])
+
+    plt.xlabel(r'$ \alpha / c / Q_0$' +  '\n' +  r'($ Parameter = 2^x $)')
+    plt.ylabel('Average Reward over first 1000 steps')
+    plt.legend()
+
+
+def sim(eps = 0, init = 0, step_size = 0.1, baseline = False, mean = 0, gradient = False, sample_averages = False):
+    tasks = [Bandit(epsilon=eps, initial=init, step_size=step_size, baseline=baseline, mean=mean, gradient=gradient, sample_averages=sample_averages) for i in range(SAMPLE)]
     for i in tqdm(range(len(tasks))):
         for t in range((TIME_STEPS)):
             tasks[i].step()
@@ -165,9 +199,10 @@ def sim(eps = 0, init = 0, step_size = 0.1, baseline = False, mean = 0, gradient
 if __name__ == "__main__":
     # SIMULATE LEARNING
 
-    # tasks_e_0 = sim()
-    # tasks_e_0_01 = sim(eps = 0.01)
-    # tasks_e_0_1 = sim(eps = 0.1)
+    # Fig 2.1
+    # tasks_e_0 = sim(sample_averages = True)
+    # tasks_e_0_01 = sim(sample_averages = True, eps = 0.01)
+    # tasks_e_0_1 = sim(sample_averages = True, eps = 0.1)
 
     # tasks_e_0_0 = sim()
     # tasks_e_0__inf = sim(init=float("inf"))
@@ -179,25 +214,30 @@ if __name__ == "__main__":
     # tasks_e_0_1__inf = sim(eps = 0.1, init=float("inf"))
     # tasks_e_0_1_inf = sim(eps = 0.1, init=float("-inf"))
 
+    # Fig 2.2
     # task_e_0_5 = sim(init=5)
     # tasks_e_0_1_0 = sim(eps=0.1)
-    # tasks_e_0_10 = sim(init=10)
-    # tasks_e_0_20 = sim(init=20)
-    # task_e_0__inf = sim(init=float('inf'))
 
-    # cProfile.run("task_a_0_1_base = sim(step_size=0.1, baseline=True, mean = 4, gradient = True)")
-    task_a_0_1_base = sim(step_size=0.1, baseline=True, mean = 4, gradient = True)
-    task_a_0_1 = sim(step_size=0.1, mean = 4, gradient = True)
-    task_a_0_4_base = sim(step_size=0.4, baseline=True, mean = 4, gradient = True)
-    task_a_0_4 = sim(step_size=0.4, mean = 4, gradient = True)
+    # Fig 2.4
+    # task_a_0_1_base = sim(step_size=0.1, baseline=True, mean = 4, gradient = True)
+    # task_a_0_1 = sim(step_size=0.1, mean = 4, gradient = True)
+    # task_a_0_4_base = sim(step_size=0.4, baseline=True, mean = 4, gradient = True)
+    # task_a_0_4 = sim(step_size=0.4, mean = 4, gradient = True)
 
     # SHOW GRAPHS
     # plt.figure(figsize=(17, 7))
 
+    # Fig 2.1
     # avg_reward_graph(tasks_e_0, tasks_e_0_1, tasks_e_0_01)
     # optimal_action_graph(tasks_e_0, tasks_e_0_01, tasks_e_0_1)
-    optimal_action_general((task_a_0_1_base, task_a_0_1, task_a_0_4_base, task_a_0_4))
-    # optimal_action_general((task_e_0_5, tasks_e_0_1_0, task_e_0__inf, tasks_e_0_10, tasks_e_0_20))
+
+    # Fig 2.2
+    # optimal_action_general((task_e_0_5, tasks_e_0_1_0))
+
+    # Fig 2.4
+    # optimal_action_general((task_a_0_1_base, task_a_0_1, task_a_0_4_base, task_a_0_4))
+
+    performance_graph()
 
     plt.show()
 
