@@ -2,9 +2,6 @@ import numpy as np
 import random
 from matplotlib import pyplot as plt
 from statistics import mean
-from math import e
-from numpy.core.defchararray import greater
-from numpy.lib.function_base import average
 from tqdm import tqdm
 
 import cProfile
